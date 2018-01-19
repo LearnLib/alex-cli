@@ -266,6 +266,21 @@ function executeTest(test) {
 }
 
 /**
+ * Get the result of the learning process.
+ * @return {*}
+ */
+function getLearnerStatus() {
+  return request({
+    method: 'GET',
+    uri: `${_uri}/learner/${_project.id}/status`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${_jwt}`
+    }
+  });
+}
+
+/**
  * Execute all tests.
  *
  * @return {Promise<*>}
@@ -349,7 +364,15 @@ function startLearning() {
               if (data.active) {
                 poll(timeout);
               } else {
-                resolve('The learning process finished.');
+                getLearnerStatus()
+                  .then((res) => {
+                    res = JSON.parse(res);
+                    console.log('\n');
+                    console.log(res.hypothesis);
+                    console.log('\n');
+                    resolve('The learning process finished.');
+                  })
+                  .catch(reject);
               }
             })
             .catch(reject);
