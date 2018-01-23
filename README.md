@@ -13,7 +13,7 @@ A command line interface for running tests and learning experiments with [ALEX](
 
 ```bash
 npm install alex-cli
-node alex-cli.js -h 
+node node_modules/alex-cli/alex-cli.js -h 
 ```
 
 ### From source
