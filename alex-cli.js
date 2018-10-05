@@ -37,7 +37,7 @@ function credentials(value) {
 }
 
 program
-  .version('1.0.0')
+  .version('1.1.0')
   .option('--uri [uri]', 'The URI where ALEX is running without trailing \'/\'')
   .option('--target [target]', 'The base URL of the target application')
   .option('-a, --action [action]', 'What do you want to do with ALEX? [test|learn]')
@@ -46,6 +46,20 @@ program
   .option('-t, --tests [file]', 'Add the json file that contains all tests that should be executed. Omit this if you want to learn.')
   .option('-c, --config [file]', 'Add the json file that contains the configuration for the web driver')
   .parse(process.argv);
+
+/**
+ * The interval in ms to poll for the test status.
+ *
+ * @type {number}
+ */
+const POLL_TIME_TESTING = 3000;
+
+/**
+ * The interval in ms to poll for the learner status.
+ *
+ * @type {number}
+ */
+const POLL_TIME_LEARNING = 5000;
 
 /**
  * The URI of the server where the backend of ALEX is running.
@@ -75,7 +89,7 @@ let _user = null;
  * The project that is created during the process.
  * At the end, the project will be deleted.
  *
- * @type {{name: string: baseUrl: string, id: number}|null}
+ * @type {{name: string: urls: Object[], id: number}|null}
  * @private
  */
 let _project = null;
@@ -83,7 +97,7 @@ let _project = null;
 /**
  * The list of symbols that are required for the tests.
  *
- * @type {{name: string, actions: object[], id: number}[]|null}
+ * @type {Object[]|null}
  * @private
  */
 let _symbols = null;
@@ -157,7 +171,9 @@ function createProject() {
     },
     body: JSON.stringify({
       name: createProjectName(),
-      baseUrl: program.target
+      urls: [
+        {url: program.target, default: true}
+      ]
     })
   });
 }
@@ -203,38 +219,30 @@ function createSymbols() {
  * @return {*}
  */
 function createTests() {
-  const mapTestCaseSymbols = (testCase) => {
-    testCase.symbols = testCase.symbols.map(name => {
-      const sym = _symbols.find(s => s.name === name);
-      if (sym) return sym.id;
-    });
-  };
 
-  const prepareTestCase = (testCase, parent) => {
-    testCase.project = _project.id;
-    testCase.parent = parent;
-    mapTestCaseSymbols(testCase);
-  };
+  function prepareTestCase(tc) {
+    const mapSymbolIds = (steps) => {
+      steps.forEach(step => {
+        step.pSymbol.symbol = _symbols.find(s => s.name === step.pSymbol.symbolFromName).id;
+      });
+    };
 
-  const prepareTestSuite = (testSuite, parent) => {
-    testSuite.project = _project.id;
-    testSuite.parent = parent;
-    testSuite.tests.forEach(test => {
+    mapSymbolIds(tc.preSteps);
+    mapSymbolIds(tc.steps);
+    mapSymbolIds(tc.postSteps);
+  }
+
+  function prepareTests(tests) {
+    tests.forEach(test => {
       if (test.type === 'case') {
-        prepareTestCase(test, null);
+        prepareTestCase(test);
       } else {
-        prepareTestSuite(test, null);
+        prepareTests(test);
       }
     });
-  };
-
-  for (let test of _tests) {
-    if (test.type === 'case') {
-      prepareTestCase(test, null);
-    } else {
-      prepareTestSuite(test, null);
-    }
   }
+
+  prepareTests(_tests);
 
   return request({
     method: 'POST',
@@ -250,18 +258,39 @@ function createTests() {
 /**
  * Execute a single test.
  *
- * @param test The test to execute.
  * @return {*}
  */
-function executeTest(test) {
+function executeTests() {
   return request({
     method: 'POST',
-    uri: `${_uri}/projects/${_project.id}/tests/${test.id}/execute`,
+    uri: `${_uri}/projects/${_project.id}/tests/execute`,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${_jwt}`
     },
     body: JSON.stringify(_config)
+  });
+}
+
+function getTestStatus() {
+  return request({
+    method: 'GET',
+    uri: `${_uri}/projects/${_project.id}/tests/status`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${_jwt}`
+    }
+  });
+}
+
+function getLatestTestResult() {
+  return request({
+    method: 'GET',
+    uri: `${_uri}/projects/${_project.id}/tests/reports/latest`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${_jwt}`
+    }
   });
 }
 
@@ -280,50 +309,54 @@ function getLearnerStatus() {
   });
 }
 
+function getLatestLearnerResult() {
+  return request({
+    method: 'GET',
+    uri: `${_uri}/projects/${_project.id}/results/latest`,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${_jwt}`
+    }
+  });
+}
+
 /**
  * Execute all tests.
  *
  * @return {Promise<*>}
  */
-function executeTests() {
+function startTesting() {
+  _config.tests = _tests.map(test => test.id);
+  _config.url = _project.urls[0].id;
+  _config.createReport = true;
+
   return new Promise((resolve, reject) => {
-    let numTests = 0;
-    let testsFailed = 0;
-    let passed = true;
-
-    const next = (test) => {
-      executeTest(test).then((results) => {
-        results = JSON.parse(results);
-
-        for (const id in results) {
-          const result = results[id];
-          if (result.test.type === 'case') {
-            passed &= result.passed;
-            numTests++;
-
-            if (!result.passed) {
-              testsFailed++;
-            }
-
-            console.log(`${result.passed ? chalk.white.bgGreen('passed') : chalk.white.bgRed('failed')} \t ${result.test.name}`);
-          }
+    executeTests(_tests)
+      .then(() => {
+        function poll() {
+          getTestStatus()
+            .then(res1 => {
+              const data1 = JSON.parse(res1);
+              if (!data1.active) {
+                getLatestTestResult()
+                  .then(res2 => {
+                    const data2 = JSON.parse(res2);
+                    if (data2.passed) {
+                      resolve(`${data2.numTestsPassed}/${data2.numTests} tests passed.`);
+                    } else {
+                      reject(`${data2.numTestsFailed}/${data2.numTests} tests failed.`);
+                    }
+                  })
+                  .catch(reject);
+              } else {
+                setTimeout(poll, POLL_TIME_TESTING);
+              }
+            }).catch(reject);
         }
 
-        _tests.shift();
-        if (_tests.length) {
-          next(_tests[0]);
-        } else {
-          if (passed) {
-            resolve(`${numTests}/${numTests} tests passed.`);
-          } else {
-            reject(`${testsFailed}/${numTests} tests failed.`);
-          }
-        }
-
-      }).catch(reject);
-    };
-
-    next(_tests[0]);
+        poll();
+      })
+      .catch(reject);
   });
 }
 
@@ -333,18 +366,17 @@ function executeTests() {
  * @return {Promise<*>}
  */
 function startLearning() {
-  // replace names in config with corresponding ids.
-  _config.symbols = _config.symbols.map((symbol) => _symbols.find((s) => s.name === symbol).id);
-  _config.resetSymbol = _symbols.find((s) => s.name === _config.resetSymbol).id;
+  const mapSymbolIds = (pSymbol) => {
+    pSymbol.symbol = _symbols.find(s => s.name === pSymbol.symbolFromName).id;
+  };
 
-  const isActive = () => request({
-    method: 'GET',
-    uri: `${_uri}/learner/${_project.id}/active`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    }
-  });
+  _config.symbols.forEach(mapSymbolIds);
+  mapSymbolIds(_config.resetSymbol);
+  if (_config.postSymbol != null) {
+    mapSymbolIds(_config.postSymbol);
+  }
+
+  _config.urls = [_project.urls[0].id];
 
   return new Promise((resolve, reject) => {
     request({
@@ -356,30 +388,32 @@ function startLearning() {
       },
       body: JSON.stringify(_config)
     }).then(() => {
-      const poll = (timeout) => {
-        setTimeout(() => {
-          isActive()
-            .then((data) => {
-              data = JSON.parse(data);
-              if (data.active) {
-                poll(timeout);
-              } else {
-                getLearnerStatus()
-                  .then((res) => {
-                    res = JSON.parse(res);
+      const poll = () => {
+        getLearnerStatus()
+          .then(res1 => {
+            const data1 = JSON.parse(res1);
+            if (!data1.active) {
+              getLatestLearnerResult()
+                .then(res2 => {
+                  const data2 = JSON.parse(res2);
+                  if (!data2.error) {
                     console.log('\n');
-                    console.log(res.hypothesis);
+                    console.log(data2.hypothesis);
                     console.log('\n');
                     resolve('The learning process finished.');
-                  })
-                  .catch(reject);
-              }
-            })
-            .catch(reject);
-        }, timeout);
+                  } else {
+                    reject(data2.errorMessage);
+                  }
+                })
+                .catch(reject);
+            } else {
+              setTimeout(poll, POLL_TIME_LEARNING);
+            }
+          })
+          .catch(reject);
       };
 
-      poll(5000);
+      poll();
     }).catch(reject);
   });
 }
@@ -442,11 +476,11 @@ try {
       throw 'The file for the symbols that you specified cannot be found.';
     } else {
       const contents = fs.readFileSync(file);
-      const symbols = JSON.parse(contents);
-      if (!symbols.length) {
+      const data = JSON.parse(contents);
+      if (data.symbols == null || data.symbols.length === 0) {
         throw 'The file that you specified does not seem to contain any symbols.';
       } else {
-        _symbols = symbols;
+        _symbols = data.symbols;
       }
     }
   }
@@ -461,11 +495,11 @@ try {
         throw 'The file for the tests that you specified cannot be found.';
       } else {
         const contents = fs.readFileSync(file);
-        const tests = JSON.parse(contents);
-        if (!tests.length) {
+        const data = JSON.parse(contents);
+        if (data.tests == null || data.tests.length === 0) {
           throw 'The file that you specified does not seem to contain any tests.';
         } else {
-          _tests = tests;
+          _tests = data.tests;
         }
       }
     }
@@ -517,7 +551,7 @@ login(_user).then((data) => {
           _tests = JSON.parse(data);
           console.log(chalk.white.dim(`Tests have been imported.`));
           console.log(chalk.white.dim(`Executing tests...`));
-          return executeTests();
+          return startTesting();
         });
       } else {
         console.log(chalk.white.dim(`Start learning...`));

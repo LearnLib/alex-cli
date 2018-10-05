@@ -1,0 +1,28 @@
+{
+  "symbols": [{
+    "symbolFromName": "search",
+    "parameterValues": [{
+      "parameter": {
+        "type": "input",
+        "name": "term",
+        "parameterType": "STRING",
+        "private": false
+      },
+      "value": "potato"
+    }]
+  }],
+  "maxAmountOfStepsToLearn": -1,
+  "eqOracle": {"type": "random_word", "minLength": 5, "maxLength": 5, "maxNoOfTests": 5, "seed": 42},
+  "algorithm": {"name": "TTT"},
+  "resetSymbol": {"symbolFromName": "reset", "parameterValues": []},
+  "driverConfig": {
+    "width": 1920,
+    "height": 1080,
+    "implicitlyWait": 0,
+    "pageLoadTimeout": 10,
+    "scriptTimeout": 10,
+    "name": "firefox",
+    "headless": true
+  },
+  "useMQCache": true
+}

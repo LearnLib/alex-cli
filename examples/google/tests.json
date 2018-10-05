@@ -1,0 +1,41 @@
+{
+  "version": "1.6.0",
+  "type": "tests",
+  "tests": [
+    {
+      "type": "case",
+      "name": "test",
+      "preSteps": [],
+      "steps": [
+        {
+          "shouldFail": false,
+          "expectedResult": "",
+          "pSymbol": {
+            "parameterValues": [],
+            "symbolFromName": "reset"
+          }
+        },
+        {
+          "shouldFail": false,
+          "expectedResult": "",
+          "pSymbol": {
+            "parameterValues": [
+              {
+                "parameter": {
+                  "type": "input",
+                  "name": "term",
+                  "parameterType": "STRING",
+                  "private": false
+                },
+                "value": "potato"
+              }
+            ],
+            "symbolFromName": "search"
+          }
+        }
+      ],
+      "postSteps": [],
+      "status": "DONE"
+    }
+  ]
+}
