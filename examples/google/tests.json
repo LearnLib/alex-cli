@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "type": "tests",
   "tests": [
     {
@@ -12,7 +12,9 @@
           "expectedResult": "",
           "pSymbol": {
             "parameterValues": [],
-            "symbolFromName": "reset"
+            "symbol": {
+              "name": "reset"
+            }
           }
         },
         {
@@ -30,7 +32,9 @@
                 "value": "potato"
               }
             ],
-            "symbolFromName": "search"
+            "symbol": {
+              "name": "search"
+            }
           }
         }
       ],

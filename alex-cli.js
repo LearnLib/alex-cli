@@ -37,9 +37,9 @@ function credentials(value) {
 }
 
 program
-  .version('1.1.0')
+  .version('1.2.0')
   .option('--uri [uri]', 'The URI where ALEX is running without trailing \'/\'')
-  .option('--target [target]', 'The base URL of the target application')
+  .option('--targets [targets]', 'The base URL and mirrors of the target application as comma separated list')
   .option('-a, --action [action]', 'What do you want to do with ALEX? [test|learn]')
   .option('-u, --user [credentials]', 'Credentials with the pattern "email:password"', credentials)
   .option('-s, --symbols [file]', 'Add the json file that contains all necessary symbols')
@@ -152,7 +152,7 @@ function login(user) {
  */
 function createProject() {
   const createProjectName = () => {
-    let text = 'cli-';
+    let text = 'alex-cli-';
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
     for (let i = 0; i < 24; i++) {
@@ -161,6 +161,9 @@ function createProject() {
 
     return text;
   };
+
+  const urls = program.targets.split(',').map(u => ({url: u, default: false}));
+  urls[0].default = true;
 
   return request({
     method: 'POST',
@@ -171,9 +174,7 @@ function createProject() {
     },
     body: JSON.stringify({
       name: createProjectName(),
-      urls: [
-        {url: program.target, default: true}
-      ]
+      urls: urls
     })
   });
 }
@@ -223,7 +224,7 @@ function createTests() {
   function prepareTestCase(tc) {
     const mapSymbolIds = (steps) => {
       steps.forEach(step => {
-        step.pSymbol.symbol = _symbols.find(s => s.name === step.pSymbol.symbolFromName).id;
+        step.pSymbol.symbol = {id: _symbols.find(s => s.name === step.pSymbol.symbol.name).id};
       });
     };
 
@@ -366,8 +367,22 @@ function startTesting() {
  * @return {Promise<*>}
  */
 function startLearning() {
+
+  // symbolId -> parameterName -> parameter
+  // needed to set the ids of the parameters by name
+  const inputParamMap = {};
+  _symbols.forEach(sym => {
+    inputParamMap[sym.id] = inputParamMap[sym.id] == null ? {} : inputParamMap[sym.id];
+    sym.inputs.forEach(input => {
+      inputParamMap[sym.id][input.name] = input;
+    });
+  });
+
   const mapSymbolIds = (pSymbol) => {
-    pSymbol.symbol = _symbols.find(s => s.name === pSymbol.symbolFromName).id;
+    pSymbol.symbol = {id: _symbols.find(s => s.name === pSymbol.symbol.name).id};
+    pSymbol.parameterValues.forEach(pv => {
+      pv.parameter.id = inputParamMap[pSymbol.symbol.id][pv.parameter.name].id;
+    })
   };
 
   _config.symbols.forEach(mapSymbolIds);
@@ -387,7 +402,7 @@ function startLearning() {
         'Authorization': `Bearer ${_jwt}`
       },
       body: JSON.stringify(_config)
-    }).then(() => {
+    }).then(res => {
       const poll = () => {
         getLearnerStatus()
           .then(res1 => {
@@ -397,9 +412,7 @@ function startLearning() {
                 .then(res2 => {
                   const data2 = JSON.parse(res2);
                   if (!data2.error) {
-                    console.log('\n');
-                    console.log(data2.hypothesis);
-                    console.log('\n');
+                    console.log('\n', data2.hypothesis, '\n');
                     resolve('The learning process finished.');
                   } else {
                     reject(data2.errorMessage);
@@ -412,7 +425,6 @@ function startLearning() {
           })
           .catch(reject);
       };
-
       poll();
     }).catch(reject);
   });
@@ -438,7 +450,7 @@ try {
   }
 
   // validate target URL
-  if (!program.target) {
+  if (!program.targets) {
     throw 'You haven\'t specified the URL of the target application.';
   }
 
@@ -532,6 +544,7 @@ function terminate(message, fn) {
     fn(message);
   }
 }
+
 
 // execute the tests / learning process
 login(_user).then((data) => {
