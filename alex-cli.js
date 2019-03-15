@@ -40,6 +40,7 @@ program
   .version('1.2.0')
   .option('--uri [uri]', 'The URI where ALEX is running without trailing \'/\'')
   .option('--targets [targets]', 'The base URL and mirrors of the target application as comma separated list')
+  .option('--clean-up', 'If the project is deleted after a test or learning process')
   .option('-a, --action [action]', 'What do you want to do with ALEX? [test|learn]')
   .option('-u, --user [credentials]', 'Credentials with the pattern "email:password"', credentials)
   .option('-s, --symbols [file]', 'Add the json file that contains all necessary symbols')
@@ -533,12 +534,16 @@ try {
  * @param {Function} fn The callback that processes the message.
  */
 function terminate(message, fn) {
-  deleteProject()
-    .then(() => {
-      console.log(chalk.white.dim(`Project has been deleted.`));
-      fn(message);
-    })
-    .catch(() => fn(message));
+  if (program.cleanUp) {
+    deleteProject()
+        .then(() => {
+          console.log(chalk.white.dim(`Project has been deleted.`));
+          fn(message);
+        })
+        .catch(() => fn(message));
+  } else {
+    fn(message);
+  }
 }
 
 

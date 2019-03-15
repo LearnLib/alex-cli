@@ -74,6 +74,7 @@ node alex-cli.js --uri "http://localhost:8080" \
                  -s "./symbols.json" \
                  -t "./tests.json" \
                  -c "./config.testing.json"
+                 --clean-up
 ```
 
 #### Learning
@@ -85,4 +86,5 @@ node alex-cli.js --uri "http://alex.some-server.de" \
                  -u "admin@alex.example:admin" \
                  -s "./symbols.json" \
                  -c "./config.learning.json"
+                 --clean-up
 ```
