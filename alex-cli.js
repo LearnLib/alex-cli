@@ -533,16 +533,12 @@ try {
  * @param {Function} fn The callback that processes the message.
  */
 function terminate(message, fn) {
-  if (_action === 'test') {
-    deleteProject()
-      .then(() => {
-        console.log(chalk.white.dim(`Project has been deleted.`));
-        fn(message);
-      })
-      .catch(() => fn(message));
-  } else {
-    fn(message);
-  }
+  deleteProject()
+    .then(() => {
+      console.log(chalk.white.dim(`Project has been deleted.`));
+      fn(message);
+    })
+    .catch(() => fn(message));
 }
 
 
@@ -553,7 +549,7 @@ login(_user).then((data) => {
 
   return createProject().then((data) => {
     _project = JSON.parse(data);
-    console.log(chalk.white.dim(`Project has been created.`));
+    console.log(chalk.white.dim(`Project ${_project.name} has been created.`));
 
     return createSymbols().then((data) => {
       _symbols = JSON.parse(data);
