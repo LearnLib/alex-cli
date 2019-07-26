@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "1.8.0",
   "type": "tests",
   "tests": [
     {
@@ -8,8 +8,8 @@
       "preSteps": [],
       "steps": [
         {
-          "shouldFail": false,
-          "expectedResult": "",
+          "expectedOutputSuccess": true,
+          "expectedOutputMessage": "",
           "pSymbol": {
             "parameterValues": [],
             "symbol": {
@@ -18,8 +18,8 @@
           }
         },
         {
-          "shouldFail": false,
-          "expectedResult": "",
+          "expectedOutputSuccess": true,
+          "expectedOutputMessage": "",
           "pSymbol": {
             "parameterValues": [
               {

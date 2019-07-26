@@ -403,7 +403,7 @@ function startLearning() {
         'Authorization': `Bearer ${_jwt}`
       },
       body: JSON.stringify(_config)
-    }).then(res => {
+    }).then(() => {
       const poll = () => {
         getLearnerStatus()
           .then(res1 => {
