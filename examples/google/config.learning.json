@@ -1,28 +1,51 @@
 {
-  "symbols": [{
-    "symbolFromName": "search",
-    "parameterValues": [{
-      "parameter": {
-        "type": "input",
-        "name": "term",
-        "parameterType": "STRING",
-        "private": false
+  "symbols": [
+    {
+      "symbol": {
+        "name": "search"
       },
-      "value": "potato"
-    }]
-  }],
+      "parameterValues": [
+        {
+          "parameter": {
+            "type": "input",
+            "name": "term",
+            "parameterType": "STRING",
+            "private": false
+          },
+          "value": "test"
+        }
+      ]
+    }
+  ],
+  "urls": [],
   "maxAmountOfStepsToLearn": -1,
-  "eqOracle": {"type": "random_word", "minLength": 5, "maxLength": 5, "maxNoOfTests": 5, "seed": 42},
-  "algorithm": {"name": "TTT"},
-  "resetSymbol": {"symbolFromName": "reset", "parameterValues": []},
+  "eqOracle": {
+    "batchSize": 1,
+    "minLength": 5,
+    "maxLength": 5,
+    "maxNoOfTests": 5,
+    "seed": 42,
+    "type": "random_word"
+  },
+  "algorithm": {
+    "name": "TTT"
+  },
+  "resetSymbol": {
+    "symbol": {
+      "name": "reset"
+    },
+    "parameterValues": []
+  },
+  "comment": null,
   "driverConfig": {
-    "width": 1920,
-    "height": 1080,
+    "name": "chrome",
+    "headless": true,
+    "height": 1661,
     "implicitlyWait": 0,
     "pageLoadTimeout": 10,
     "scriptTimeout": 10,
-    "name": "firefox",
-    "headless": true
+    "width": 2953
   },
-  "useMQCache": true
+  "useMQCache": true,
+  "postSymbol": null
 }

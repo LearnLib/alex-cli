@@ -1,6 +1,6 @@
 {
   "name": "alex-cli",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A command line interface for executing tests and learning experiments with ALEX",
   "main": "alex-cli.js",
   "scripts": {
@@ -12,9 +12,9 @@
   "author": "Alexander Bainczyk",
   "license": "Apache-2.0",
   "dependencies": {
-    "chalk": "^2.4.1",
-    "commander": "^2.18.0",
+    "chalk": "^2.4.2",
+    "commander": "^2.19.0",
     "request": "^2.88.0",
-    "request-promise-native": "^1.0.5"
+    "request-promise-native": "^1.0.7"
   }
 }

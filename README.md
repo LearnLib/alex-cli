@@ -1,6 +1,6 @@
 # ALEX CLI
 
-A command line interface for running tests and learning experiments with [ALEX](https://github.com/LearnLib/alex) **(v1.6.0)**.
+A command line interface for running tests and learning experiments with [ALEX](https://github.com/LearnLib/alex) **(v1.7.0)**.
 
 ## Requirements
 
@@ -27,9 +27,9 @@ node alex-cli.js -h
 
 ## Usage
 
-1. Export the symbols from ALEX ([see here](http://learnlib.github.io/alex/book/1.4.0/contents/user-manual/symbol-modeling/#export--import)).
+1. Export the symbols from ALEX ([see here](http://learnlib.github.io/alex/book/1.7.0/contents/user-manual/symbol-modeling/#export--import)).
     * When asked, select the option **Export symbols only**
-2. Export the tests from ALEX ([see here](http://learnlib.github.io/alex/book/1.4.0/contents/user-manual/testing.html)).
+2. Export the tests from ALEX ([see here](http://learnlib.github.io/alex/book/1.7.0/contents/user-manual/testing.html)).
 
 Execute `node alex-cli.js -h` to see a complete list of parameters and their descriptions.
 For examples see the section below.
@@ -46,9 +46,8 @@ For examples see the section below.
     "implicitlyWait": 0,
     "pageLoadTimeout": 10,
     "scriptTimeout": 10,
-    "name": "firefox",
-    "headless": true,
-    "xvfbPort": null
+    "name": "chrome",
+    "headless": true
   }
 }
 ```
@@ -60,31 +59,32 @@ For examples see the section below.
 |implicitlyWait|Selenium implicit timeout value|
 |pageLoadTimeout|Selenium page load timeout value|
 |scriptTimeout|Selenium script timeout value|
-|name|The name of the browser, 'firefox', 'chrome', 'htmlUnit'|
+|name|The name of the browser, 'firefox', 'chrome', 'htmlUnit', 'ie', 'safari', 'edge'|
 |headless|If the browser is run headless. Only for Firefox and Chrome|
-|xvfbPort|The port of the virtual display. Only for Firefox and Chrome|
 
 ### CLI
 
 #### Testing
 
 ```bash
-node alex-cli.js --uri "http://alex.some-server.de" \
-                 --target "https://www.google.com" \
+node alex-cli.js --uri "http://localhost:8080" \
+                 --targets "https://www.google.com,https://www.google.com" \
                  -a "test" \
                  -u "admin@alex.example:admin" \
                  -s "./symbols.json" \
                  -t "./tests.json" \
                  -c "./config.testing.json"
+                 --clean-up
 ```
 
 #### Learning
 
 ```bash
 node alex-cli.js --uri "http://alex.some-server.de" \
-                 --target "https://www.google.com" \
+                 --target "https://www.google.com,https://www.google.com" \
                  -a "learn" \
                  -u "admin@alex.example:admin" \
                  -s "./symbols.json" \
                  -c "./config.learning.json"
+                 --clean-up
 ```
