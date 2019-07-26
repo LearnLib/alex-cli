@@ -128,6 +128,22 @@ let _config = null;
  */
 let _action = null;
 
+/**
+ * Create the default headers send to ALEX
+ *
+ * @returns {*}
+ * @private
+ */
+function _getDefaultHttpHeaders() {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (_jwt != null) {
+    headers['Authorization'] = `Bearer ${_jwt}`;
+  }
+  return headers;
+}
+
 
 /**
  * Login a user.
@@ -139,9 +155,7 @@ function login(user) {
   return request({
     method: 'POST',
     uri: `${_uri}/users/login`,
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: _getDefaultHttpHeaders(),
     body: JSON.stringify(user)
   });
 }
@@ -169,10 +183,7 @@ function createProject() {
   return request({
     method: 'POST',
     uri: `${_uri}/projects`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    },
+    headers: _getDefaultHttpHeaders(),
     body: JSON.stringify({
       name: createProjectName(),
       urls: urls
@@ -190,10 +201,7 @@ function deleteProject() {
     request({
       method: 'DELETE',
       uri: `${_uri}/projects/${_project.id}`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${_jwt}`
-      }
+      headers: _getDefaultHttpHeaders()
     }).then(resolve).catch(reject);
   });
 }
@@ -207,10 +215,7 @@ function createSymbols() {
   return request({
     method: 'POST',
     uri: `${_uri}/projects/${_project.id}/symbols/batch`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    },
+    headers: _getDefaultHttpHeaders(),
     body: JSON.stringify(_symbols)
   });
 }
@@ -249,10 +254,7 @@ function createTests() {
   return request({
     method: 'POST',
     uri: `${_uri}/projects/${_project.id}/tests/batch`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    },
+    headers: _getDefaultHttpHeaders(),
     body: JSON.stringify(_tests)
   });
 }
@@ -266,10 +268,7 @@ function executeTests() {
   return request({
     method: 'POST',
     uri: `${_uri}/projects/${_project.id}/tests/execute`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    },
+    headers: _getDefaultHttpHeaders(),
     body: JSON.stringify(_config)
   });
 }
@@ -278,10 +277,7 @@ function getTestStatus() {
   return request({
     method: 'GET',
     uri: `${_uri}/projects/${_project.id}/tests/status`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    }
+    headers: _getDefaultHttpHeaders()
   });
 }
 
@@ -289,10 +285,7 @@ function getLatestTestResult() {
   return request({
     method: 'GET',
     uri: `${_uri}/projects/${_project.id}/tests/reports/latest`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    }
+    headers: _getDefaultHttpHeaders()
   });
 }
 
@@ -304,10 +297,7 @@ function getLearnerStatus() {
   return request({
     method: 'GET',
     uri: `${_uri}/learner/${_project.id}/status`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    }
+    headers: _getDefaultHttpHeaders()
   });
 }
 
@@ -315,10 +305,7 @@ function getLatestLearnerResult() {
   return request({
     method: 'GET',
     uri: `${_uri}/projects/${_project.id}/results/latest`,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${_jwt}`
-    }
+    headers: _getDefaultHttpHeaders()
   });
 }
 
@@ -398,10 +385,7 @@ function startLearning() {
     request({
       method: 'POST',
       uri: `${_uri}/learner/${_project.id}/start`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${_jwt}`
-      },
+      headers: _getDefaultHttpHeaders(),
       body: JSON.stringify(_config)
     }).then(() => {
       const poll = () => {
