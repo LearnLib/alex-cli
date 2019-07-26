@@ -1,6 +1,8 @@
 # ALEX CLI
 
-A command line interface for running tests and learning experiments with [ALEX](https://github.com/LearnLib/alex) **(v1.7.0)**.
+A command line interface for running tests and learning experiments with [ALEX](https://github.com/LearnLib/alex) **(v1.7.*)**.
+
+NPM package: [https://www.npmjs.com/package/alex-cli](https://www.npmjs.com/package/alex-cli)
 
 ## Requirements
 
