@@ -254,6 +254,8 @@ function createSymbols() {
 function createTests() {
 
   function prepareTestCase(tc) {
+    tc.project = _project.id;
+
     const mapSymbolIds = (steps) => {
       steps.forEach(step => {
         step.pSymbol.symbol = {id: _symbols.find(s => s.name === step.pSymbol.symbol.name).id};
@@ -267,10 +269,12 @@ function createTests() {
 
   function prepareTests(tests) {
     tests.forEach(test => {
+      console.log(test.type, test.name);
       if (test.type === 'case') {
         prepareTestCase(test);
-      } else {
-        prepareTests(test);
+      } else if (test.type === 'suite') {
+        test.project = _project.id;
+        prepareTests(test.tests);
       }
     });
   }
