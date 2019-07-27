@@ -30,11 +30,10 @@ node alex-cli.js -h
 ## Usage
 
 1. Export the symbols from ALEX ([see here](http://learnlib.github.io/alex/book/1.7.0/contents/user-manual/symbol-modeling/#export--import)).
-    * When asked, select the option **Export symbols only**
 2. Export the tests from ALEX ([see here](http://learnlib.github.io/alex/book/1.7.0/contents/user-manual/testing.html)).
 
 Execute `node alex-cli.js -h` to see a complete list of parameters and their descriptions.
-For examples see the section below.
+For examples, see the section below.
 
 ### Configuration
 

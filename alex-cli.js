@@ -104,6 +104,14 @@ let _project = null;
 let _symbols = null;
 
 /**
+ * The list of symbols groups.
+ *
+ * @type {Object[]|null}
+ * @private
+ */
+let _symbolGroups = null;
+
+/**
  * The test cases that should be executed.
  *
  * @type {{id:number, name:string, parent:number|null, project:number, symbols:object[]}[]|null}
@@ -212,12 +220,30 @@ function deleteProject() {
  * @return {*}
  */
 function createSymbols() {
-  return request({
-    method: 'POST',
-    uri: `${_uri}/projects/${_project.id}/symbols/batch`,
-    headers: _getDefaultHttpHeaders(),
-    body: JSON.stringify(_symbols)
-  });
+  if (_symbolGroups != null) {
+    return request({
+      method: 'POST',
+      uri: `${_uri}/projects/${_project.id}/groups/batch`,
+      headers: _getDefaultHttpHeaders(),
+      body: JSON.stringify(_symbolGroups)
+    }).then(data => {
+      const groups = JSON.parse(data);
+      const symbols = [];
+      const iterate = (group) => {
+        group.symbols.forEach(s => symbols.push(s));
+        group.groups.forEach(g => iterate(g));
+      };
+      groups.forEach(iterate);
+      return symbols;
+    });
+  } else {
+    return request({
+      method: 'POST',
+      uri: `${_uri}/projects/${_project.id}/symbols/batch`,
+      headers: _getDefaultHttpHeaders(),
+      body: JSON.stringify(_symbols)
+    }).then(JSON.parse);
+  }
 }
 
 /**
@@ -474,10 +500,12 @@ try {
     } else {
       const contents = fs.readFileSync(file);
       const data = JSON.parse(contents);
-      if (data.symbols == null || data.symbols.length === 0) {
-        throw 'The file that you specified does not seem to contain any symbols.';
-      } else {
+      if (data.type === 'symbols' && data.symbols != null && data.symbols.length > 0) {
         _symbols = data.symbols;
+      } else if (data.type === 'symbolGroups' && data.symbolGroups != null && data.symbolGroups.length > 0) {
+        _symbolGroups = data.symbolGroups;
+      } else {
+        throw 'The file that you specified does not seem to contain any symbols.';
       }
     }
   }
@@ -541,7 +569,7 @@ login(_user).then((data) => {
     console.log(chalk.white.dim(`Project ${_project.name} has been created.`));
 
     return createSymbols().then((data) => {
-      _symbols = JSON.parse(data);
+      _symbols = data;
       console.log(chalk.white.dim(`Symbols have been imported.`));
 
       if (_action === 'test') {
