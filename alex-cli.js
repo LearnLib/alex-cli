@@ -269,7 +269,6 @@ function createTests() {
 
   function prepareTests(tests) {
     tests.forEach(test => {
-      console.log(test.type, test.name);
       if (test.type === 'case') {
         prepareTestCase(test);
       } else if (test.type === 'suite') {
@@ -349,6 +348,16 @@ function startTesting() {
   _config.url = _project.urls[0].id;
   _config.createReport = true;
 
+  function printReport(report) {
+    report.testResults.forEach(tr => {
+      if (tr.passed) {
+        console.log(`${chalk.bgGreen("success")} ${tr.test.name}`);
+      } else {
+        console.log(`${chalk.bgRed("failed")} ${tr.test.name}`);
+      }
+    });
+  }
+
   return new Promise((resolve, reject) => {
     executeTests(_tests)
       .then(() => {
@@ -360,6 +369,7 @@ function startTesting() {
                 getLatestTestResult()
                   .then(res2 => {
                     const data2 = JSON.parse(res2);
+                    printReport(data2);
                     if (data2.passed) {
                       resolve(`${data2.numTestsPassed}/${data2.numTests} tests passed.`);
                     } else {
