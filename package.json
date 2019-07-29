@@ -1,6 +1,6 @@
 {
   "name": "alex-cli",
-  "version": "1.3.0",
+  "version": "1.8.0",
   "description": "A command line interface for executing tests and learning experiments with ALEX v1.8.0",
   "main": "alex-cli.js",
   "scripts": {
