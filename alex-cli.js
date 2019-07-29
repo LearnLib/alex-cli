@@ -19,7 +19,8 @@
 const program = require('commander'),
   request = require('request-promise-native'),
   chalk = require('chalk'),
-  fs = require('fs');
+  fs = require('fs'),
+  nPath = require('path');
 
 /**
  * Parse user credentials from a string.
@@ -46,6 +47,7 @@ program
   .option('-s, --symbols [file]', 'Add the json file that contains all necessary symbols')
   .option('-t, --tests [file]', 'Add the json file that contains all tests that should be executed. Omit this if you want to learn.')
   .option('-c, --config [file]', 'Add the json file that contains the configuration for the web driver')
+  .option('-f --files [files]', 'A file or directory that contains files to upload to ALEX')
   .parse(process.argv);
 
 /**
@@ -137,6 +139,14 @@ let _config = null;
 let _action = null;
 
 /**
+ * The files to upload.
+ *
+ * @type {Array}
+ * @private
+ */
+let _files = [];
+
+/**
  * Create the default headers send to ALEX
  *
  * @returns {*}
@@ -211,6 +221,39 @@ function deleteProject() {
       uri: `${_uri}/projects/${_project.id}`,
       headers: _getDefaultHttpHeaders()
     }).then(resolve).catch(reject);
+  });
+}
+
+/**
+ * Upload files.
+ *
+ * @returns {Promise<*>}
+ */
+function uploadFiles() {
+  return new Promise((resolve, reject) => {
+    const headers = JSON.parse(JSON.stringify(_getDefaultHttpHeaders()));
+    headers['Content-Type'] = 'multipart/form-data';
+
+    const queue = [..._files];
+
+    const next = (file => {
+      request({
+        headers,
+        method: 'POST',
+        uri: `${_uri}/projects/${_project.id}/files/upload`,
+        formData: {
+          file: fs.createReadStream(file)
+        }
+      }).then(() => {
+        if (queue.length === 0) {
+          resolve();
+        } else {
+          next(queue.shift());
+        }
+      }).catch(reject);
+    });
+
+    next(queue.shift());
   });
 }
 
@@ -547,6 +590,23 @@ try {
       throw 'You want to learn, but have specified tests.';
     }
   }
+
+  if (program.files) {
+    const path = program.files;
+
+    let stat;
+    try {
+      stat = fs.lstatSync(path);
+    } catch (e) {
+      throw 'The file or directory that contains files could not be found';
+    }
+
+    if (stat.isFile()) {
+      _files = [path];
+    } else if (stat.isDirectory()) {
+      _files = fs.readdirSync(path).map(f => nPath.join(path, f));
+    }
+  }
 } catch (exception) {
   console.log(chalk.red(exception));
   process.exit(1);
@@ -578,10 +638,7 @@ login(_user).then((data) => {
   _jwt = JSON.parse(data).token;
   console.log(chalk.white.dim(`User "${_user.email}" logged in.`));
 
-  return createProject().then((data) => {
-    _project = JSON.parse(data);
-    console.log(chalk.white.dim(`Project ${_project.name} has been created.`));
-
+  function progress() {
     return createSymbols().then((data) => {
       _symbols = data;
       console.log(chalk.white.dim(`Symbols have been imported.`));
@@ -598,6 +655,20 @@ login(_user).then((data) => {
         return startLearning();
       }
     });
+  }
+
+  return createProject().then((data) => {
+    _project = JSON.parse(data);
+    console.log(chalk.white.dim(`Project ${_project.name} has been created.`));
+
+    if (_files.length > 0) {
+      return uploadFiles().then(() => {
+        console.log(chalk.white.dim(`Files have been uploaded.`));
+        return progress()
+      })
+    } else {
+      return progress();
+    }
   });
 }).then((result) => {
   terminate(result, (message) => {
