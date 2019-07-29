@@ -10,9 +10,9 @@ node alex-cli.js \
         --targets "https://www.google.com,https://www.google.com" \
         -a "test" \
         -u "admin@alex.example:admin" \
-        -s "./examples/google/symbols.json" 
-        -t "./examples/google/tests.json" 
-        -c "./examples/google/config.testing.json" 
+        -s "./examples/google/symbols.json" \
+        -t "./examples/google/tests.json" \
+        -c "./examples/google/config.testing.json" \
         --clean-up
 ```
 
@@ -24,7 +24,7 @@ node alex-cli.js \
         --targets "https://www.google.com,https://www.google.com" \
         -a "learn" \
         -u "admin@alex.example:admin" \
-        -s "./examples/google/symbols.json" 
-        -c "./examples/google/config.learning.json" 
+        -s "./examples/google/symbols.json" \
+        -c "./examples/google/config.learning.json" \
         --clean-up
 ```
