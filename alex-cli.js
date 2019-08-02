@@ -48,6 +48,7 @@ program
   .option('-t, --tests [file]', 'Add the json file that contains all tests that should be executed. Omit this if you want to learn.')
   .option('-c, --config [file]', 'Add the json file that contains the configuration for the web driver')
   .option('-f --files [files]', 'A file or directory that contains files to upload to ALEX')
+  .option('-o --out [file]', 'A file where test reports and learned models are written to')
   .parse(process.argv);
 
 /**
@@ -362,6 +363,18 @@ function getLatestTestResult() {
 }
 
 /**
+ * Get the report as JUnit XML.
+ * @param {number} reportId The ID of the test report.
+ */
+function getJUnitReport(reportId) {
+  return request({
+    method: 'GET',
+    uri: `${_uri}/projects/${_project.id}/tests/reports/${reportId}?format=${encodeURIComponent('junit+xml')}`,
+    headers: _getDefaultHttpHeaders()
+  });
+}
+
+/**
  * Get the result of the learning process.
  * @return {*}
  */
@@ -373,12 +386,37 @@ function getLearnerStatus() {
   });
 }
 
+/**
+ * Get the latest learner result.
+ * Should be called after the learning process is finished.
+ * @return {*}
+ */
 function getLatestLearnerResult() {
   return request({
     method: 'GET',
     uri: `${_uri}/projects/${_project.id}/results/latest`,
     headers: _getDefaultHttpHeaders()
   });
+}
+
+/**
+ * Write the learned model or test report into a file.
+ *
+ * @param {string} data The data to write into the file.
+ */
+function writeOutputFile(data) {
+  if (program.out) {
+    const file = program.out;
+    if (fs.existsSync(file)) {
+      fs.unlinkSync(file);
+    }
+    fs.writeFile(file, data, (err) => {
+      if(err) {
+        console.error(`Failed to write result in file ${file}.`, err);
+      }
+      console.log(chalk.white.dim(`Wrote result to file ${file}`));
+    });
+  }
 }
 
 /**
@@ -413,11 +451,18 @@ function startTesting() {
                   .then(res2 => {
                     const data2 = JSON.parse(res2);
                     printReport(data2);
-                    if (data2.passed) {
-                      resolve(`${data2.numTestsPassed}/${data2.numTests} tests passed.`);
-                    } else {
-                      reject(`${data2.numTestsFailed}/${data2.numTests} tests failed.`);
-                    }
+
+                    getJUnitReport(data2.id).then(res3 => {
+                      writeOutputFile(res3);
+                    }).catch(err => {
+                      console.error(err);
+                    }).finally(() => {
+                      if (data2.passed) {
+                        resolve(`${data2.numTestsPassed}/${data2.numTests} tests passed.`);
+                      } else {
+                        reject(`${data2.numTestsFailed}/${data2.numTests} tests failed.`);
+                      }
+                    });
                   })
                   .catch(reject);
               } else {
@@ -481,6 +526,7 @@ function startLearning() {
                   const data2 = JSON.parse(res2);
                   if (!data2.error) {
                     console.log('\n', data2.hypothesis, '\n');
+                    writeOutputFile(JSON.stringify(data2.hypothesis));
                     resolve('The learning process finished.');
                   } else {
                     reject(data2.errorMessage);
