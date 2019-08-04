@@ -20,7 +20,8 @@ const program = require('commander'),
   request = require('request-promise-native'),
   chalk = require('chalk'),
   fs = require('fs'),
-  nPath = require('path');
+  nPath = require('path'),
+  dateformat = require('dateformat');
 
 /**
  * Parse user credentials from a string.
@@ -187,9 +188,11 @@ function login(user) {
 function createProject() {
   const createProjectName = () => {
     let text = 'alex-cli-';
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-    for (let i = 0; i < 24; i++) {
+    text += dateformat(new Date(), 'isoDateTime') + '-';
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 10; i++) {
       text += chars.charAt(Math.floor(Math.random() * chars.length));
     }
 
@@ -643,14 +646,13 @@ try {
     let stat;
     try {
       stat = fs.lstatSync(path);
+      if (stat.isFile()) {
+        _files = [path];
+      } else if (stat.isDirectory()) {
+        _files = fs.readdirSync(path).map(f => nPath.join(path, f));
+      }
     } catch (e) {
-      throw 'The file or directory that contains files could not be found';
-    }
-
-    if (stat.isFile()) {
-      _files = [path];
-    } else if (stat.isDirectory()) {
-      _files = fs.readdirSync(path).map(f => nPath.join(path, f));
+      console.log(chalk.italic.yellow('The file or directory that contains files could not be found'));
     }
   }
 } catch (exception) {
