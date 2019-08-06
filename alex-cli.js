@@ -270,7 +270,7 @@ function createSymbols() {
   if (_symbolGroups != null) {
     return request({
       method: 'POST',
-      uri: `${_uri}/projects/${_project.id}/groups/batch`,
+      uri: `${_uri}/projects/${_project.id}/groups/import`,
       headers: _getDefaultHttpHeaders(),
       body: JSON.stringify(_symbolGroups)
     }).then(data => {
