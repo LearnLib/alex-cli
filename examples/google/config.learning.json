@@ -17,7 +17,6 @@
       ]
     }
   ],
-  "urls": [],
   "maxAmountOfStepsToLearn": -1,
   "eqOracle": {
     "batchSize": 1,

@@ -149,6 +149,14 @@ let _action = null;
 let _files = [];
 
 /**
+ * The environments in the project.
+ *
+ * @type {Array}
+ * @private
+ */
+let _environments = [];
+
+/**
  * Create the default headers send to ALEX
  *
  * @returns {*}
@@ -199,18 +207,61 @@ function createProject() {
     return text;
   };
 
-  const urls = program.targets.split(',').map(u => ({url: u, default: false}));
-  urls[0].default = true;
+  const urls = program.targets.split(',');
+  const url = urls.shift();
 
-  return request({
-    method: 'POST',
-    uri: `${_uri}/projects`,
-    headers: _getDefaultHttpHeaders(),
-    body: JSON.stringify({
-      name: createProjectName(),
-      urls: urls
-    })
+  return new Promise((resolve, reject) => {
+      request({
+          method: 'POST',
+          uri: `${_uri}/projects`,
+          headers: _getDefaultHttpHeaders(),
+          body: JSON.stringify({
+              name: createProjectName(),
+              url: url
+          })
+      }).then(data => {
+          _project = JSON.parse(data);
+          _environments.push(_project.environments[0]);
+          return createEnvironments(urls).then(resolve);
+      }).catch(reject);
   });
+}
+
+function createEnvironments(urls) {
+    return new Promise((resolve, reject) => {
+        let i = 1;
+
+        const f = () => {
+            if (urls.length === 0) {
+                resolve();
+            } else {
+                request({
+                    method: 'POST',
+                    uri: `${_uri}/projects/${_project.id}/environments`,
+                    headers: _getDefaultHttpHeaders(),
+                    body: JSON.stringify({
+                        name: `Env${i}`,
+                    })
+                }).then(data => {
+                    const env = JSON.parse(data);
+                    env.urls[0].url = urls.shift();
+                    _environments.push(env);
+
+                    return request({
+                        method: 'PUT',
+                        uri: `${_uri}/projects/${_project.id}/environments/${env.id}/urls/${env.urls[0].id}`,
+                        headers: _getDefaultHttpHeaders(),
+                        body: JSON.stringify(env.urls[0])
+                    }).then(() => {
+                        i++;
+                        f();
+                    });
+                }).catch(reject);
+            }
+        };
+
+        f();
+    });
 }
 
 /**
@@ -429,7 +480,7 @@ function writeOutputFile(data) {
  */
 function startTesting() {
   _config.tests = _tests.map(test => test.id);
-  _config.url = _project.urls[0].id;
+  _config.environment = _project.environments[0].id;
   _config.createReport = true;
 
   function printReport(report) {
@@ -510,7 +561,7 @@ function startLearning() {
     mapSymbolIds(_config.postSymbol);
   }
 
-  _config.urls = [_project.urls[0].id];
+  _config.environments = _environments.map(e => e.id);
 
   return new Promise((resolve, reject) => {
     request({
@@ -705,8 +756,7 @@ login(_user).then((data) => {
     });
   }
 
-  return createProject().then((data) => {
-    _project = JSON.parse(data);
+  return createProject().then(() => {
     console.log(chalk.white.dim(`Project ${_project.name} has been created.`));
 
     if (_files.length > 0) {

@@ -22,7 +22,8 @@
             "credentials": {
               "name": "",
               "password": ""
-            }
+            },
+            "baseUrl": "Base"
           },
           "position": 0
         },
