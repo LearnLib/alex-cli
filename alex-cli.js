@@ -39,7 +39,7 @@ function credentials(value) {
 }
 
 program
-  .version('1.8.0')
+  .version('1.8.0-SNAPSHOT')
   .option('--uri [uri]', 'The URI where ALEX is running without trailing \'/\'')
   .option('--targets [targets]', 'The base URL and mirrors of the target application as comma separated list')
   .option('--clean-up', 'If the project is deleted after a test or learning process')

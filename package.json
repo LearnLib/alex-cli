@@ -1,6 +1,9 @@
 {
   "name": "alex-cli",
-  "version": "1.8.0",
+  "version": "1.8.0-SNAPSHOT",
+  "repository": {
+    "url": "https://github.com/LearnLib/alex-cli.git"
+  },
   "description": "A command line interface for executing tests and learning experiments with ALEX v1.8.0",
   "main": "alex-cli.js",
   "scripts": {
@@ -13,7 +16,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "chalk": "^2.4.2",
-    "commander": "^2.20.0",
+    "commander": "^3.0.1",
     "dateformat": "^3.0.3",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.7"
