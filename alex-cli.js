@@ -23,6 +23,8 @@ const program = require('commander'),
   nPath = require('path'),
   dateformat = require('dateformat');
 
+const VERSION = '1.8.0-SNAPSHOT';
+
 /**
  * Parse user credentials from a string.
  * The string should be "email:password".
@@ -39,7 +41,7 @@ function credentials(value) {
 }
 
 program
-  .version('1.8.0-SNAPSHOT')
+  .version(VERSION)
   .option('--uri [uri]', 'The URI where ALEX is running without trailing \'/\'')
   .option('--targets [targets]', 'The base URL and mirrors of the target application as comma separated list')
   .option('--clean-up', 'If the project is deleted after a test or learning process')
@@ -207,61 +209,40 @@ function createProject() {
     return text;
   };
 
-  const urls = program.targets.split(',');
-  const url = urls.shift();
+  const data = {
+      version: VERSION,
+      type: 'project',
+      project: {
+          name: createProjectName(),
+          environments: []
+      },
+      groups: [{name: 'Default Group'}],
+      tests: []
+  };
 
-  return new Promise((resolve, reject) => {
-      request({
-          method: 'POST',
-          uri: `${_uri}/projects`,
-          headers: _getDefaultHttpHeaders(),
-          body: JSON.stringify({
-              name: createProjectName(),
-              url: url
-          })
-      }).then(data => {
-          _project = JSON.parse(data);
-          _environments.push(_project.environments[0]);
-          return createEnvironments(urls).then(resolve);
-      }).catch(reject);
+  const targets = program.targets.split(',');
+  for (let i = 0; i < targets.length; i++) {
+      data.project.environments.push({
+          name: i === 0 ? 'Production' : `Env${i + 1}`,
+          default: i === 0,
+          urls: [{
+              name: 'Base',
+              url: targets[i],
+              default: true
+          }],
+          variables: []
+      })
+  }
+
+  return request({
+      method: 'POST',
+      uri: `${_uri}/projects/import`,
+      headers: _getDefaultHttpHeaders(),
+      body: JSON.stringify(data)
+  }).then(data => {
+      _project = JSON.parse(data);
+      _environments = _project.environments;
   });
-}
-
-function createEnvironments(urls) {
-    return new Promise((resolve, reject) => {
-        let i = 1;
-
-        const f = () => {
-            if (urls.length === 0) {
-                resolve();
-            } else {
-                request({
-                    method: 'POST',
-                    uri: `${_uri}/projects/${_project.id}/environments`,
-                    headers: _getDefaultHttpHeaders(),
-                    body: JSON.stringify({
-                        name: `Env${i}`,
-                    })
-                }).then(data => {
-                    const env = JSON.parse(data);
-                    env.urls[0].url = urls.shift();
-                    _environments.push(env);
-
-                    return request({
-                        method: 'PUT',
-                        uri: `${_uri}/projects/${_project.id}/environments/${env.id}/urls/${env.urls[0].id}`,
-                        headers: _getDefaultHttpHeaders(),
-                        body: JSON.stringify(env.urls[0])
-                    }).then(() => {
-                        i++;
-                        f();
-                    });
-                }).catch(reject);
-            }
-        };
-
-        f();
-    });
 }
 
 /**
@@ -350,37 +331,9 @@ function createSymbols() {
  * @return {*}
  */
 function createTests() {
-
-  function prepareTestCase(tc) {
-    tc.project = _project.id;
-
-    const mapSymbolIds = (steps) => {
-      steps.forEach(step => {
-        step.pSymbol.symbol = {id: _symbols.find(s => s.name === step.pSymbol.symbol.name).id};
-      });
-    };
-
-    mapSymbolIds(tc.preSteps);
-    mapSymbolIds(tc.steps);
-    mapSymbolIds(tc.postSteps);
-  }
-
-  function prepareTests(tests) {
-    tests.forEach(test => {
-      if (test.type === 'case') {
-        prepareTestCase(test);
-      } else if (test.type === 'suite') {
-        test.project = _project.id;
-        prepareTests(test.tests);
-      }
-    });
-  }
-
-  prepareTests(_tests);
-
   return request({
     method: 'POST',
-    uri: `${_uri}/projects/${_project.id}/tests/batch`,
+    uri: `${_uri}/projects/${_project.id}/tests/import`,
     headers: _getDefaultHttpHeaders(),
     body: JSON.stringify(_tests)
   });
