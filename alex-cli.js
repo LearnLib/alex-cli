@@ -47,6 +47,7 @@ program
   .option('--clean-up', 'If the project is deleted after a test or learning process')
   .option('-a, --action [action]', 'What do you want to do with ALEX? [test|learn]')
   .option('-u, --user [credentials]', 'Credentials with the pattern "email:password"', credentials)
+  .option('-p, --project [file]', 'Add the json file that contains a project. Cannot be used in combination with \'-s\', \'-t\' and \'--targets\'')
   .option('-s, --symbols [file]', 'Add the json file that contains all necessary symbols')
   .option('-t, --tests [file]', 'Add the json file that contains all tests that should be executed. Omit this if you want to learn.')
   .option('-c, --config [file]', 'Add the json file that contains the configuration for the web driver')
@@ -190,13 +191,8 @@ function login(user) {
   });
 }
 
-/**
- * Create a new project with a random name.
- *
- * @return {*}
- */
-function createProject() {
-  const createProjectName = () => {
+function _createProject(data) {
+  function createProjectName() {
     let text = 'alex-cli-';
 
     text += dateformat(new Date(), 'isoDateTime') + '-';
@@ -207,42 +203,91 @@ function createProject() {
     }
 
     return text;
-  };
+  }
 
-  const data = {
+  data.project.name = createProjectName();
+
+  return request({
+    method: 'POST',
+    uri: `${_uri}/projects/import`,
+    headers: _getDefaultHttpHeaders(),
+    body: JSON.stringify(data)
+  }).then(data => {
+    _project = JSON.parse(data);
+    _environments = _project.environments;
+
+    return request({
+      method: 'GET',
+      uri: `${_uri}/projects/${_project.id}/groups`,
+      headers: _getDefaultHttpHeaders()
+    }).then(data => {
+      const groups = JSON.parse(data);
+      const symbols = [];
+      const iterate = (group) => {
+        group.symbols.forEach(s => symbols.push(s));
+        group.groups.forEach(g => iterate(g));
+      };
+      groups.forEach(iterate);
+
+      _symbolGroups = groups;
+      _symbols = symbols;
+
+      return request({
+        method: 'GET',
+        uri: `${_uri}/projects/${_project.id}/tests/root`,
+        headers: _getDefaultHttpHeaders()
+      }).then(data => {
+        _tests = JSON.parse(data).tests;
+        return _tests;
+      });
+    });
+  });
+}
+
+/**
+ * Create a new project with a random name.
+ *
+ * @return {*}
+ */
+function createProject() {
+  if (_project) {
+    return _createProject(_project);
+  } else {
+    const data = {
       version: VERSION,
       type: 'project',
       project: {
-          name: createProjectName(),
-          environments: []
+        environments: []
       },
-      groups: [{name: 'Default Group'}],
-      tests: []
-  };
+      groups: [],
+      tests: _tests || []
+    };
 
-  const targets = program.targets.split(',');
-  for (let i = 0; i < targets.length; i++) {
+    if (_symbols) {
+      data.groups = [{
+        name: 'Default Group',
+        symbols: _symbols
+      }];
+    } else {
+      data.groups = _symbolGroups;
+    }
+
+    const targets = program.targets.split(',');
+    for (let i = 0; i < targets.length; i++) {
       data.project.environments.push({
-          name: i === 0 ? 'Production' : `Env${i + 1}`,
-          default: i === 0,
-          urls: [{
-              name: 'Base',
-              url: targets[i],
-              default: true
-          }],
-          variables: []
+        name: i === 0 ? 'Production' : `Env${i + 1}`,
+        default: i === 0,
+        urls: [{
+          name: 'Base',
+          url: targets[i],
+          default: true
+        }],
+        variables: []
       })
-  }
+    }
 
-  return request({
-      method: 'POST',
-      uri: `${_uri}/projects/import`,
-      headers: _getDefaultHttpHeaders(),
-      body: JSON.stringify(data)
-  }).then(data => {
-      _project = JSON.parse(data);
-      _environments = _project.environments;
-  });
+    return _createProject(data);
+  }
 }
 
 /**
@@ -290,52 +335,6 @@ function uploadFiles() {
     });
 
     next(queue.shift());
-  });
-}
-
-/**
- * Create the symbols from the file.
- *
- * @return {*}
- */
-function createSymbols() {
-  if (_symbolGroups != null) {
-    return request({
-      method: 'POST',
-      uri: `${_uri}/projects/${_project.id}/groups/import`,
-      headers: _getDefaultHttpHeaders(),
-      body: JSON.stringify(_symbolGroups)
-    }).then(data => {
-      const groups = JSON.parse(data);
-      const symbols = [];
-      const iterate = (group) => {
-        group.symbols.forEach(s => symbols.push(s));
-        group.groups.forEach(g => iterate(g));
-      };
-      groups.forEach(iterate);
-      return symbols;
-    });
-  } else {
-    return request({
-      method: 'POST',
-      uri: `${_uri}/projects/${_project.id}/symbols/batch`,
-      headers: _getDefaultHttpHeaders(),
-      body: JSON.stringify(_symbols)
-    }).then(JSON.parse);
-  }
-}
-
-/**
- * Create the tests that are specified in the file.
- *
- * @return {*}
- */
-function createTests() {
-  return request({
-    method: 'POST',
-    uri: `${_uri}/projects/${_project.id}/tests/import`,
-    headers: _getDefaultHttpHeaders(),
-    body: JSON.stringify(_tests)
   });
 }
 
@@ -570,9 +569,44 @@ try {
     _uri = program.uri + '/rest';
   }
 
-  // validate target URL
-  if (!program.targets) {
-    throw 'You haven\'t specified the URL of the target application.';
+  console.log(program.project)
+
+  if (program.project) {
+    if (program.targets || program.symbols || program.tests) {
+      throw 'You cannot specify a project file and additional targets, symbols or tests';
+    }
+
+    const file = program.project;
+    if (!fs.existsSync(file)) {
+      throw 'You haven\'t specified the file for project to import.';
+    } else {
+      _project = JSON.parse(fs.readFileSync(file));
+    }
+  } else {
+    // validate target URL
+    if (!program.targets) {
+      throw 'You haven\'t specified the URL of the target application.';
+    }
+
+    // validate symbols
+    if (!program.symbols) {
+      throw 'You have to specify a file that contains symbols.';
+    } else {
+      const file = program.symbols;
+      if (!fs.existsSync(file)) {
+        throw 'The file for the symbols that you specified cannot be found.';
+      } else {
+        const contents = fs.readFileSync(file);
+        const data = JSON.parse(contents);
+        if (data.type === 'symbols' && data.symbols != null && data.symbols.length > 0) {
+          _symbols = data.symbols;
+        } else if (data.type === 'symbolGroups' && data.symbolGroups != null && data.symbolGroups.length > 0) {
+          _symbolGroups = data.symbolGroups;
+        } else {
+          throw 'The file that you specified does not seem to contain any symbols.';
+        }
+      }
+    }
   }
 
   // validate user credentials
@@ -600,41 +634,23 @@ try {
     }
   }
 
-  // validate symbols
-  if (!program.symbols) {
-    throw 'You have to specify a file that contains symbols.';
-  } else {
-    const file = program.symbols;
-    if (!fs.existsSync(file)) {
-      throw 'The file for the symbols that you specified cannot be found.';
-    } else {
-      const contents = fs.readFileSync(file);
-      const data = JSON.parse(contents);
-      if (data.type === 'symbols' && data.symbols != null && data.symbols.length > 0) {
-        _symbols = data.symbols;
-      } else if (data.type === 'symbolGroups' && data.symbolGroups != null && data.symbolGroups.length > 0) {
-        _symbolGroups = data.symbolGroups;
-      } else {
-        throw 'The file that you specified does not seem to contain any symbols.';
-      }
-    }
-  }
-
   if (_action === 'test') {
-    // validate tests
-    if (!program.tests) {
-      throw 'You have to specify a file that contains tests.';
-    } else {
-      const file = program.tests;
-      if (!fs.existsSync(file)) {
-        throw 'The file for the tests that you specified cannot be found.';
+    if (!program.project) {
+      // validate tests
+      if (!program.tests) {
+        throw 'You have to specify a file that contains tests.';
       } else {
-        const contents = fs.readFileSync(file);
-        const data = JSON.parse(contents);
-        if (data.tests == null || data.tests.length === 0) {
-          throw 'The file that you specified does not seem to contain any tests.';
+        const file = program.tests;
+        if (!fs.existsSync(file)) {
+          throw 'The file for the tests that you specified cannot be found.';
         } else {
-          _tests = data.tests;
+          const contents = fs.readFileSync(file);
+          const data = JSON.parse(contents);
+          if (data.tests == null || data.tests.length === 0) {
+            throw 'The file that you specified does not seem to contain any tests.';
+          } else {
+            _tests = data.tests;
+          }
         }
       }
     }
@@ -684,33 +700,23 @@ function terminate(message, fn) {
   }
 }
 
-
 // execute the tests / learning process
 login(_user).then((data) => {
   _jwt = JSON.parse(data).token;
   console.log(chalk.white.dim(`User "${_user.email}" logged in.`));
 
   function progress() {
-    return createSymbols().then((data) => {
-      _symbols = data;
-      console.log(chalk.white.dim(`Symbols have been imported.`));
-
       if (_action === 'test') {
-        return createTests().then((data) => {
-          _tests = JSON.parse(data);
-          console.log(chalk.white.dim(`Tests have been imported.`));
-          console.log(chalk.white.dim(`Executing tests...`));
-          return startTesting();
-        });
+        console.log(chalk.white.dim(`Executing tests...`));
+        return startTesting();
       } else {
         console.log(chalk.white.dim(`Start learning...`));
         return startLearning();
       }
-    });
   }
 
   return createProject().then(() => {
-    console.log(chalk.white.dim(`Project ${_project.name} has been created.`));
+    console.log(chalk.white.dim(`Project ${_project.name} has been imported.`));
 
     if (_files.length > 0) {
       return uploadFiles().then(() => {
