@@ -352,18 +352,10 @@ function executeTests() {
   });
 }
 
-function getTestStatus() {
+function getTestReport(reportId) {
   return request({
     method: 'GET',
-    uri: `${_uri}/projects/${_project.id}/tests/status`,
-    headers: _getDefaultHttpHeaders()
-  });
-}
-
-function getLatestTestResult() {
-  return request({
-    method: 'GET',
-    uri: `${_uri}/projects/${_project.id}/tests/reports/latest`,
+    uri: `${_uri}/projects/${_project.id}/tests/reports/${reportId}`,
     headers: _getDefaultHttpHeaders()
   });
 }
@@ -375,7 +367,7 @@ function getLatestTestResult() {
 function getJUnitReport(reportId) {
   return request({
     method: 'GET',
-    uri: `${_uri}/projects/${_project.id}/tests/reports/${reportId}?format=${encodeURIComponent('junit+xml')}`,
+    uri: `${_uri}/projects/${_project.id}/tests/reports/${reportId}?format=${encodeURIComponent('junit')}`,
     headers: _getDefaultHttpHeaders()
   });
 }
@@ -433,7 +425,6 @@ function writeOutputFile(data) {
 function startTesting() {
   _config.tests = _tests.map(test => test.id);
   _config.environment = _project.environments[0].id;
-  _config.createReport = true;
 
   function printReport(report) {
     report.testResults.forEach(tr => {
@@ -447,36 +438,31 @@ function startTesting() {
 
   return new Promise((resolve, reject) => {
     executeTests(_tests)
-      .then(() => {
-        function poll() {
-          getTestStatus()
-            .then(res1 => {
-              const data1 = JSON.parse(res1);
-              if (!data1.active) {
-                getLatestTestResult()
-                  .then(res2 => {
-                    const data2 = JSON.parse(res2);
-                    printReport(data2);
+      .then(res => {
+        const reportId = JSON.parse(res).report.id;
 
-                    getJUnitReport(data2.id).then(res3 => {
-                      writeOutputFile(res3);
-                    }).catch(err => {
-                      console.error(err);
-                    }).finally(() => {
-                      if (data2.passed) {
-                        resolve(`${data2.numTestsPassed}/${data2.numTests} tests passed.`);
-                      } else {
-                        reject(`${data2.numTestsFailed}/${data2.numTests} tests failed.`);
-                      }
-                    });
-                  })
-                  .catch(reject);
-              } else {
+        function poll() {
+          getTestReport(reportId)
+            .then(res1 => {
+              const report = JSON.parse(res1);
+              if (report.status === 'IN_PROGRESS' || report.status === 'PENDING') {
                 setTimeout(poll, POLL_TIME_TESTING);
+              } else {
+                printReport(report);
+                getJUnitReport(report.id).then(res3 => {
+                  writeOutputFile(res3);
+                }).catch(err => {
+                  reject('Could not get junit report');
+                }).finally(() => {
+                  if (report.passed) {
+                    resolve(`${report.numTestsPassed}/${report.numTests} tests passed.`);
+                  } else {
+                    reject(`${report.numTestsFailed}/${report.numTests} tests failed.`);
+                  }
+                });
               }
             }).catch(reject);
         }
-
         poll();
       })
       .catch(reject);
