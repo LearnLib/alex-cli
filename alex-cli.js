@@ -373,26 +373,14 @@ function getJUnitReport(reportId) {
 }
 
 /**
- * Get the result of the learning process.
- * @return {*}
- */
-function getLearnerStatus() {
-  return request({
-    method: 'GET',
-    uri: `${_uri}/learner/${_project.id}/status`,
-    headers: _getDefaultHttpHeaders()
-  });
-}
-
-/**
  * Get the latest learner result.
  * Should be called after the learning process is finished.
  * @return {*}
  */
-function getLatestLearnerResult() {
+function getLearnerResult(resultId) {
   return request({
     method: 'GET',
-    uri: `${_uri}/projects/${_project.id}/results/latest`,
+    uri: `${_uri}/projects/${_project.id}/results/${resultId}?embed=steps`,
     headers: _getDefaultHttpHeaders()
   });
 }
@@ -504,27 +492,23 @@ function startLearning() {
   return new Promise((resolve, reject) => {
     request({
       method: 'POST',
-      uri: `${_uri}/learner/${_project.id}/start`,
+      uri: `${_uri}/projects/${_project.id}/learner/start`,
       headers: _getDefaultHttpHeaders(),
       body: JSON.stringify(_config)
-    }).then(() => {
+    }).then(res => {
+      const testNo = JSON.parse(res).testNo;
+
       const poll = () => {
-        getLearnerStatus()
-          .then(res1 => {
-            const data1 = JSON.parse(res1);
-            if (!data1.active) {
-              getLatestLearnerResult()
-                .then(res2 => {
-                  const data2 = JSON.parse(res2);
-                  if (!data2.error) {
-                    console.log('\n', data2.hypothesis, '\n');
-                    writeOutputFile(JSON.stringify(data2.hypothesis));
-                    resolve('The learning process finished.');
-                  } else {
-                    reject(data2.errorMessage);
-                  }
-                })
-                .catch(reject);
+        getLearnerResult(testNo)
+          .then(res2 => {
+            const result  = JSON.parse(res2);
+            if (result.status === 'FINISHED' || result.status === 'ABORTED') {
+              if (!result.error) {
+                writeOutputFile(JSON.stringify(result.steps[result.steps.length - 1].hypothesis));
+                resolve('The learning process finished.');
+              } else {
+                reject();
+              }
             } else {
               setTimeout(poll, POLL_TIME_LEARNING);
             }
