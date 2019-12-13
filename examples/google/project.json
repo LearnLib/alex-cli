@@ -41,8 +41,7 @@
             {
               "type": "input",
               "name": "term",
-              "parameterType": "STRING",
-              "private": false
+              "parameterType": "STRING"
             }
           ],
           "name": "search",
@@ -152,6 +151,7 @@
           "expectedOutputMessage": "",
           "pSymbol": {
             "parameterValues": [],
+            "outputMappings": [],
             "symbol": {
               "name": "reset"
             }
@@ -167,12 +167,12 @@
                 "parameter": {
                   "type": "input",
                   "name": "term",
-                  "parameterType": "STRING",
-                  "private": false
+                  "parameterType": "STRING"
                 },
                 "value": "potato"
               }
             ],
+            "outputMappings": [],
             "symbol": {
               "name": "search"
             }

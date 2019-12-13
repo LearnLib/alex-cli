@@ -396,12 +396,14 @@ function writeOutputFile(data) {
     if (fs.existsSync(file)) {
       fs.unlinkSync(file);
     }
-    fs.writeFile(file, data, (err) => {
-      if(err) {
-        console.error(`Failed to write result in file ${file}.`, err);
-      }
-      console.log(chalk.white.dim(`Wrote result to file ${file}`));
-    });
+
+    try {
+        fs.writeFileSync(file, data);
+        console.log(chalk.white.dim(`Wrote result to file ${file}`));
+    } catch (e) {
+        console.log(chalk.bgRed(`Failed to write contents to file ${file}`));
+        throw e;
+    }
   }
 }
 
@@ -437,20 +439,24 @@ function startTesting() {
                 setTimeout(poll, POLL_TIME_TESTING);
               } else {
                 printReport(report);
-                getJUnitReport(report.id).then(res3 => {
-                  writeOutputFile(res3);
-                }).catch(err => {
-                  reject('Could not get junit report');
-                }).finally(() => {
-                  if (report.passed) {
-                    resolve(`${report.numTestsPassed}/${report.numTests} tests passed.`);
-                  } else {
-                    reject(`${report.numTestsFailed}/${report.numTests} tests failed.`);
-                  }
-                });
+                getJUnitReport(report.id)
+                  .then(res3 => {
+                    writeOutputFile(res3);
+                  })
+                  .catch(err => {
+                    reject('Could not get junit report');
+                  })
+                  .finally(() => {
+                    if (report.passed) {
+                      resolve(`${report.numTestsPassed}/${report.numTests} tests passed.`);
+                    } else {
+                      reject(`${report.numTestsFailed}/${report.numTests} tests failed.`);
+                    }
+                  });
               }
             }).catch(reject);
         }
+
         poll();
       })
       .catch(reject);
@@ -501,7 +507,7 @@ function startLearning() {
       const poll = () => {
         getLearnerResult(testNo)
           .then(res2 => {
-            const result  = JSON.parse(res2);
+            const result = JSON.parse(res2);
             if (result.status === 'FINISHED' || result.status === 'ABORTED') {
               if (!result.error) {
                 writeOutputFile(JSON.stringify(result.steps[result.steps.length - 1].hypothesis));
@@ -538,8 +544,6 @@ try {
   } else {
     _uri = program.uri + '/rest';
   }
-
-  console.log(program.project)
 
   if (program.project) {
     if (program.targets || program.symbols || program.tests) {
@@ -660,11 +664,11 @@ try {
 function terminate(message, fn) {
   if (program.cleanUp) {
     deleteProject()
-        .then(() => {
-          console.log(chalk.white.dim(`Project has been deleted.`));
-          fn(message);
-        })
-        .catch(() => fn(message));
+      .then(() => {
+        console.log(chalk.white.dim(`Project has been deleted.`));
+        fn(message);
+      })
+      .catch(() => fn(message));
   } else {
     fn(message);
   }
@@ -676,13 +680,13 @@ login(_user).then((data) => {
   console.log(chalk.white.dim(`User "${_user.email}" logged in.`));
 
   function progress() {
-      if (_action === 'test') {
-        console.log(chalk.white.dim(`Executing tests...`));
-        return startTesting();
-      } else {
-        console.log(chalk.white.dim(`Start learning...`));
-        return startLearning();
-      }
+    if (_action === 'test') {
+      console.log(chalk.white.dim(`Executing tests...`));
+      return startTesting();
+    } else {
+      console.log(chalk.white.dim(`Start learning...`));
+      return startLearning();
+    }
   }
 
   return createProject().then(() => {

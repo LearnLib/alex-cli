@@ -55,8 +55,7 @@
         {
           "type": "input",
           "name": "term",
-          "parameterType": "STRING",
-          "private": false
+          "parameterType": "STRING"
         }
       ],
       "outputs": [],

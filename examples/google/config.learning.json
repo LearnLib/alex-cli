@@ -9,12 +9,12 @@
           "parameter": {
             "type": "input",
             "name": "term",
-            "parameterType": "STRING",
-            "private": false
+            "parameterType": "STRING"
           },
           "value": "test"
         }
-      ]
+      ],
+      "outputMappings": []
     }
   ],
   "maxAmountOfStepsToLearn": -1,
@@ -33,7 +33,8 @@
     "symbol": {
       "name": "reset"
     },
-    "parameterValues": []
+    "parameterValues": [],
+    "outputMappings": []
   },
   "comment": null,
   "driverConfig": {
