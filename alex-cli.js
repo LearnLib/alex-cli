@@ -487,13 +487,13 @@ function startLearning() {
     })
   };
 
-  _config.symbols.forEach(mapSymbolIds);
-  mapSymbolIds(_config.resetSymbol);
-  if (_config.postSymbol != null) {
-    mapSymbolIds(_config.postSymbol);
+  _config.setup.symbols.forEach(mapSymbolIds);
+  mapSymbolIds(_config.setup.preSymbol);
+  if (_config.setup.postSymbol != null) {
+    mapSymbolIds(_config.setup.postSymbol);
   }
 
-  _config.environments = _environments.map(e => e.id);
+  _config.setup.environments = _environments;
 
   return new Promise((resolve, reject) => {
     request({
